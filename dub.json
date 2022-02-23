@@ -1,0 +1,13 @@
+{
+	"name": "dmdlint",
+	"description": "A DMD-based linter for D",
+	"authors": [
+		"Luís Ferreira"
+	],
+	"license": "MIT",
+	"copyright": "Copyright © 2022, Luís Ferreira",
+	"dependencies": {
+		"dmd": { "path": "dmd/" }
+	},
+	"targetPath": "bin"
+}
