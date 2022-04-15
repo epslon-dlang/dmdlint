@@ -7,13 +7,45 @@ import std.algorithm.iteration : filter;
 import std.stdio;
 import std.getopt;
 
-import dmd.frontend: initDMD, deinitializeDMD, parseModule;
-import dmd.errors: DiagnosticHandler;
+import std.experimental.logger;
+
+import core.exception;
+
+import dmd.frontend;
+import dmd.errors;
 import dmd.globals;
 
 void processSourceFile(string path)
 {
     auto parseResult = parseModule(path);
+    if (parseResult.module_)
+        parseResult.module_.fullSemantic();
+}
+
+void initCompilerContext()
+{
+    // handlers
+    static immutable DiagnosticHandler ignoreErrors =
+        (ref _1, _2, _3, _4, _5, _6, _7) => true;
+
+    static immutable FatalErrorHandler errorHandler = () {
+        onAssertErrorMsg(__FILE__, __LINE__, "fatal error");
+        return true;
+    };
+
+    // set globals
+    global.params.errorLimit = 0;
+
+    // init global state
+    initDMD(null, errorHandler);
+}
+
+void reinitCompilerContext()
+{
+    // TODO: No need to reinitialize the whole global state. Performance can be
+    // improved here.
+    deinitializeDMD();
+    initCompilerContext();
 }
 
 int main(string[] args)
@@ -26,10 +58,8 @@ int main(string[] args)
         "daemon", &opt.daemon,
         "daemon-mode", &opt.daemonMode);
 
-    DiagnosticHandler ignoreErrors = (ref _1, _2, _3, _4, _5, _6, _7) => true;
 
-    global.params.errorLimit = 0;
-    initDMD(null);
+    initCompilerContext();
     scope(exit) deinitializeDMD();
 
     auto files = dirEntries(".", "*.{d,di,dd}", SpanMode.depth)
@@ -37,7 +67,12 @@ int main(string[] args)
 
     foreach (entry; files)
     {
-        processSourceFile(entry.name);
+        log(entry);
+        try {
+            processSourceFile(entry.name);
+        } catch (AssertError e) {
+            reinitCompilerContext();
+        }
     }
 
     return 0;
