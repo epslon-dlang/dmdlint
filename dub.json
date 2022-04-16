@@ -41,6 +41,7 @@
 			],
 			"dependencies": {
 				"dmd": { "path": "dmd/" },
+				"argparse": "~>0.8.0",
 				"dmdlint:common": "*"
 			}
 		},

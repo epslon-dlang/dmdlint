@@ -15,11 +15,14 @@ import std.experimental.logger;
 
 import core.exception;
 import core.stdc.stdarg;
+import core.sys.posix.unistd : isatty, STDIN_FILENO;
 
 import dmd.frontend;
 import dmd.errors;
 import dmd.globals;
 import dmd.console;
+
+import argparse;
 
 void processSourceFile(string path)
 {
@@ -85,12 +88,41 @@ void reinitCompilerContext()
     initCompilerContext();
 }
 
+struct AppOptions
+{
+    @(
+        NamedArgument("imports", "I")
+        .Description("Specify additional import paths")
+    )
+    string[] importPaths;
+
+    @MutuallyExclusive
+    {
+        @(
+            NamedArgument("stdin")
+            .Description("Read a D source file from the standard input")
+        )
+        bool stdin;
+
+        @(
+            NamedArgument("files", "f")
+            .Description("D source files to scan. You can provide a regex to match multiple files")
+        )
+        string[] files;
+    }
+
+    @TrailingArguments string[] trailingArgs;
+}
+
 int main(string[] args)
 {
     auto opt = ScanOptions();
+    ScanOptions options;
+    AppOptions appOptions;
 
-    // check if stdin is open
-    if (args.length == 1)
+    // check if stdin is open and it's not in a tty
+    // FIXME: Make it less OS-dependent by using UCRT library
+    if (args.length == 1 && stdin.isOpen() && !isatty(STDIN_FILENO))
     {
         static immutable minSizeChunk = genPackedBuffer(ScanOptions.init).length;
         Appender!(ubyte[]) buf;
@@ -99,17 +131,37 @@ int main(string[] args)
         foreach(ubyte[] chunk; stdin.byChunk(min(minSizeChunk, 4096)))
             buf ~= chunk;
 
+        if (buf[].empty)
+        {
+            stderr.writeln("Please provide a packed buffer with the options!");
+            return 1;
+        }
+
         // FIXME: Use appender when it has range interfaces
         auto nopt = buf[].unpackBuffer!(ScanOptions, SignatureChecks.none);
         assert(!nopt.isNull, "can't decode packed buffer");
-        opt = nopt.get();
+        options = nopt.get();
     } else {
-        auto gopt = getopt(args,
-            "s|source", &opt.sourcePaths,
-            "I|imports", &opt.importPaths,
-            );
-    }
+        assert(args.length > 0);
 
+        bool readStdin;
+        // seek for - argument (read from stdin)
+        foreach(i, arg; args)
+        {
+            if(arg == "-")
+            {
+                readStdin = true;
+                args = args.remove(i);
+                break;
+            }
+        }
+
+        auto nappopt = parseCLIArgs!AppOptions(args[1 .. $]);
+        if (nappopt.isNull)
+            return 1;
+
+        appOptions = nappopt.get();
+    }
 
     initCompilerContext();
     scope(exit) deinitializeDMD();

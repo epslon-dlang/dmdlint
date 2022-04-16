@@ -6,7 +6,6 @@ import std.traits;
 import dmdlint.common.utils;
 
 struct ScanOptions {
-    string[] sourceFiles;
-    string[] sourcePaths;
+    string[] files;
     string[] importPaths;
 }
