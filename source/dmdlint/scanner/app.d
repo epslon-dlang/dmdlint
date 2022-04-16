@@ -3,6 +3,7 @@ module dmdlint.scanner.app;
 import dmdlint.common.scanopt;
 import dmdlint.common.utils;
 import dmdlint.common.diag;
+import dmdlint.scanner.diag;
 
 import std.file;
 import std.algorithm;
@@ -45,14 +46,17 @@ void initCompilerContext()
         Severity severity = headerColor.toSeverity();
         Location location = loc.toLocation();
 
-        strinc message = void;
+        string message = void;
         {
             // Avoid copy/reallocating a new buffer for performance reasons.
             // Instead, take the ownership of the data and add it to the GC
             // ranges list to be collected.
+            import dmd.common.outbuffer;
             OutBuffer tmp;
             tmp.vprintf(messageFormat, args);
             message = tmp.extractSlice();
+
+            import core.memory : GC;
             GC.addRange(message.ptr, message.length);
         }
 
@@ -95,7 +99,8 @@ int main(string[] args)
         foreach(ubyte[] chunk; stdin.byChunk(min(minSizeChunk, 4096)))
             buf ~= chunk;
 
-        auto nopt = buf.unpackBuffer!(ScanOptions, SignatureChecks.none);
+        // FIXME: Use appender when it has range interfaces
+        auto nopt = buf[].unpackBuffer!(ScanOptions, SignatureChecks.none);
         assert(!nopt.isNull, "can't decode packed buffer");
         opt = nopt.get();
     } else {

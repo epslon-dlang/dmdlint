@@ -4,8 +4,9 @@ import dmdlint.common.diag;
 
 import dmd.errors;
 import dmd.console;
+import dmd.globals;
 
-Severity toSeverity(Color color)
+Severity toSeverity(Color color) nothrow @nogc @safe pure
 {
     switch(color) with(Color)
     {
@@ -29,11 +30,11 @@ Severity toSeverity(Color color)
     }
 }
 
-Location toLocation(Loc loc)
+Location toLocation(Loc loc) nothrow @nogc pure
 {
     import core.stdc.string : strlen;
     string filename = (loc.filename)
-        ? loc.filename[0..strlen(loc.filename)]
+        ? cast(string) loc.filename[0..strlen(loc.filename)]
         : null;
 
     return Location(filename, loc.linnum, loc.charnum);
