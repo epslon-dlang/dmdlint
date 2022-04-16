@@ -1,3 +1,6 @@
 [submodule "compiler/dmd"]
 	path = compiler/dmd
 	url = git@github.com:dlang/dmd.git
+[submodule "compiler/phobos"]
+	path = compiler/phobos
+	url = git@github.com:dlang/phobos.git
