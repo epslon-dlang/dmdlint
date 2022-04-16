@@ -4,3 +4,6 @@
 [submodule "compiler/phobos"]
 	path = compiler/phobos
 	url = git@github.com:dlang/phobos.git
+[submodule "compiler/druntime"]
+	path = compiler/druntime
+	url = git@github.com:dlang/druntime.git
