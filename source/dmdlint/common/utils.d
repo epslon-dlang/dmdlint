@@ -98,8 +98,11 @@ unittest {
 enum TypeTagID : ubyte
 {
     // special cases
-    barray,
-    tuple,
+    sbarray, /// signed byte arrays
+    ubarray, /// unsigned byte arrays
+    cbarray, /// character byte arrays (for UTF-8 auto decoding)
+    bbarray, /// boolean arrays
+    tuple,   /// tuple types
 
     struct_,
     class_,
@@ -140,8 +143,17 @@ enum TypeTagID : ubyte
 template getTypeTagID(T)
 {
     // special cases first
-    static if(isArray!T && (is(ElementEncodingType!T : ubyte)))
-        enum getTypeTagID = TypeTagID.barray;
+    static if(isArray!T && is(ElementEncodingType!T : ubyte))
+    {
+        static if(is(Unqual!(ElementEncodingType!T) == char))
+            enum getTypeTagID = TypeTagID.cbarray;
+        else static if(is(Unqual!(ElementEncodingType!T) == ubyte))
+            enum getTypeTagID = TypeTagID.ubarray;
+        else static if(is(Unqual!(ElementEncodingType!T) == byte))
+            enum getTypeTagID = TypeTagID.sbarray;
+        else static if(is(Unqual!(ElementEncodingType!T) == bool))
+            enum getTypeTagID = TypeTagID.bbarray;
+    }
     else static if(__traits(isSame, TemplateOf!T, Tuple))
         enum getTypeTagID = TypeTagID.tuple;
 
@@ -186,9 +198,11 @@ template getTypeTagID(T)
 unittest
 {
     assert(getTypeTagID!int == TypeTagID.int_);
-    assert(getTypeTagID!string == TypeTagID.barray);
-    assert(getTypeTagID!(byte[]) == TypeTagID.barray);
-    assert(getTypeTagID!(char[]) == TypeTagID.barray);
+    assert(getTypeTagID!string == TypeTagID.cbarray);
+    assert(getTypeTagID!(byte[]) == TypeTagID.sbarray);
+    assert(getTypeTagID!(bool[]) == TypeTagID.bbarray);
+    assert(getTypeTagID!(ubyte[]) == TypeTagID.ubarray);
+    assert(getTypeTagID!(char[]) == TypeTagID.cbarray);
     assert(getTypeTagID!(int[]) == TypeTagID.dynArray);
     assert(getTypeTagID!(int[5]) == TypeTagID.staArray);
     assert(getTypeTagID!(int[ulong]) == TypeTagID.assArray);
@@ -488,7 +502,7 @@ unittest
     assert(
         cast(ubyte[])[TypeTagID.struct_] ~ 2u ~
             TypeTagID.ubyte_ ~ 10u ~
-            TypeTagID.barray ~ 3u ~ cast(ubyte[])"abc"
+            TypeTagID.cbarray ~ 3u ~ cast(ubyte[])"abc"
         == a.genPackedBuffer!(SignatureChecks.strict));
 
     assert(
@@ -497,7 +511,7 @@ unittest
             toLEB128(ubyte.sizeof) ~ toLEB128(ubyte.alignof) ~ TypeTagID.ubyte_ ~
             10u ~
             toLEB128(A.str.offsetof) ~
-            toLEB128(string.sizeof) ~ toLEB128(string.alignof) ~ TypeTagID.barray ~
+            toLEB128(string.sizeof) ~ toLEB128(string.alignof) ~ TypeTagID.cbarray ~
             3u ~ cast(ubyte[])"abc"
         == a.genPackedBuffer!(SignatureChecks.full));
 }
