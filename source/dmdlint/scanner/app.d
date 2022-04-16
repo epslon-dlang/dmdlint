@@ -1,6 +1,6 @@
-module dmdlint.app;
+module dmdlint.scanner.app;
 
-import dmdlint.opt;
+import dmdlint.common.scanopt;
 
 import std.file;
 import std.algorithm.iteration : filter;
@@ -50,14 +50,11 @@ void reinitCompilerContext()
 
 int main(string[] args)
 {
-    auto opt = Options();
+    auto opt = ScanOptions();
     auto gopt = getopt(args,
-        "S|single-instance", &opt.singleInstance,
         "s|source", &opt.sourcePaths,
         "I|imports", &opt.importPaths,
-        "daemon", &opt.daemon,
-        "daemon-mode", &opt.daemonMode);
-
+        );
 
     initCompilerContext();
     scope(exit) deinitializeDMD();

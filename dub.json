@@ -6,8 +6,55 @@
 	],
 	"license": "MIT",
 	"copyright": "Copyright © 2022, Luís Ferreira",
+	"sourcePaths": [ "source" ],
+	"importPaths": [ "source" ],
+	"excludedSourceFiles": [
+		"source/dmdlint/common/*",
+		"source/dmdlint/scanner/*"
+	],
+	"preRunCommands": [ "$DUB build dmdlint:scanner" ],
 	"dependencies": {
-		"dmd": { "path": "dmd/" }
+		"dmdlint:common": "*"
 	},
-	"targetPath": "bin"
+	"targetPath": "bin",
+	"configurations": [
+		{
+			"name": "application",
+			"targetType": "executable"
+		},
+		{
+			"name": "library",
+			"targetType": "library"
+		}
+	],
+	"subPackages": [
+		{
+			"name": "scanner",
+			"targetType": "executable",
+			"targetName": "dmdlint-scan",
+			"targetPath": "bin",
+			"sourcePaths": [ "source" ],
+			"importPaths": [ "source" ],
+			"excludedSourceFiles": [
+				"source/dmdlint/common/*",
+				"source/dmdlint/linter/*"
+			],
+			"dependencies": {
+				"dmd": { "path": "dmd/" },
+				"dmdlint:common": "*"
+			}
+		},
+		{
+			"name": "common",
+			"targetType": "staticLibrary",
+			"targetName": "dmdlint-common",
+			"targetPath": "bin",
+			"sourcePaths": [ "source" ],
+			"importPaths": [ "source" ],
+			"excludedSourceFiles": [
+				"source/dmdlint/scanner/*",
+				"source/dmdlint/linter/*"
+			]
+		}
+	]
 }
