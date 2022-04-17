@@ -70,11 +70,12 @@ int main(string[] args)
     // FIXME: Make it less OS-dependent by using UCRT library
     if (args.length == 1 && stdin.isOpen() && !isatty(STDIN_FILENO))
     {
-        static immutable minSizeChunk = genPackedBuffer(ScanOptions.init).length;
+        static immutable minPackedBufChunkSize = genPackedBuffer(ScanOptions.init).length;
+        static immutable minChunkSize = min(minPackedBufChunkSize, 4096);
         Appender!(ubyte[]) buf;
-        buf.reserve(minSizeChunk);
+        buf.reserve(minPackedBufChunkSize);
 
-        foreach(ubyte[] chunk; stdin.byChunk(min(minSizeChunk, 4096)))
+        foreach(ubyte[] chunk; stdin.byChunk(minChunkSize))
             buf ~= chunk;
 
         if (buf[].empty)
