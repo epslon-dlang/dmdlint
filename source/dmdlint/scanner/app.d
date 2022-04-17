@@ -55,10 +55,10 @@ struct AppOptions
         )
         string[] files;
     }
-
-    @TrailingArguments string[] trailingArgs;
 }
 
+version(unittest) {}
+else
 int main(string[] args)
 {
     ScanOptions options;
@@ -114,16 +114,32 @@ int main(string[] args)
     initCompilerContext();
     scope(exit) deinitializeDMD();
 
-    auto files = dirEntries(".", "*.{d,di,dd}", SpanMode.depth)
-        .filter!(e => e.isFile);
-
-    foreach (entry; files)
+    foreach (path; options.files)
     {
-        log(entry);
-        try {
-            processSourceFile(entry.name);
-        } catch (FatalError e) {
-            reinitCompilerContext();
+        if (!path.exists)
+        {
+            stderr.writefln("Invalid path '%s'", path);
+            return 1;
+        }
+
+        if (DirEntry(path).isDir)
+        {
+            foreach(entry; dirEntries(path, "*.{d,di,dd}", SpanMode.depth).filter!(e => e.isFile))
+            {
+                log(entry);
+                try {
+                    processSourceFile(entry.name);
+                } catch (FatalError e) {
+                    reinitCompilerContext();
+                }
+            }
+        } else {
+            log(path);
+            try {
+                processSourceFile(path);
+            } catch (FatalError e) {
+                reinitCompilerContext();
+            }
         }
     }
 
