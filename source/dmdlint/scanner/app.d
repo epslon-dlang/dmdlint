@@ -3,6 +3,7 @@ module dmdlint.scanner.app;
 import dmdlint.common.scanopt;
 import dmdlint.common.utils;
 import dmdlint.common.diag;
+import dmdlint.scanner.compiler;
 import dmdlint.scanner.diag;
 
 import std.file;
@@ -30,63 +31,6 @@ void processSourceFile(string path)
     auto parseResult = parseModule(path);
     if (parseResult.module_)
         parseResult.module_.fullSemantic();
-}
-
-// no need to be on TLS since the compiler is single-threaded
-__gshared Appender!(Diagnostic[]) diagnostics;
-
-void initCompilerContext()
-{
-    // handlers
-    static bool diagnosticHandlerFunc(
-        const ref Loc loc,
-        Color headerColor,
-        const(char)* header,
-        const(char)* messageFormat,
-        va_list args,
-        const(char)* prefix1,
-        const(char)* prefix2
-    ) {
-        Severity severity = headerColor.toSeverity();
-        Location location = loc.toLocation();
-
-        string message = void;
-        {
-            // Avoid copy/reallocating a new buffer for performance reasons.
-            // Instead, take the ownership of the data and add it to the GC
-            // ranges list to be collected.
-            import dmd.common.outbuffer;
-            OutBuffer tmp;
-            tmp.vprintf(messageFormat, args);
-            message = tmp.extractSlice();
-
-            import core.memory : GC;
-            GC.addRange(message.ptr, message.length);
-        }
-
-        diagnostics ~= Diagnostic(location, severity, message);
-
-        return true;
-    }
-
-    static immutable FatalErrorHandler errorHandler = () {
-        onAssertErrorMsg(__FILE__, __LINE__, "fatal error");
-        return true;
-    };
-
-    // set globals
-    global.params.errorLimit = 0;
-
-    // init global state
-    initDMD(toDelegate(&diagnosticHandlerFunc), errorHandler);
-}
-
-void reinitCompilerContext()
-{
-    // TODO: No need to reinitialize the whole global state. Performance can be
-    // improved here.
-    deinitializeDMD();
-    initCompilerContext();
 }
 
 struct AppOptions
@@ -117,9 +61,8 @@ struct AppOptions
 
 int main(string[] args)
 {
-    auto opt = ScanOptions();
     ScanOptions options;
-    AppOptions appOptions;
+    bool readStdin;
 
     // check if stdin is open and it's not in a tty
     // FIXME: Make it less OS-dependent by using UCRT library
@@ -145,7 +88,6 @@ int main(string[] args)
     } else {
         assert(args.length > 0);
 
-        bool readStdin;
         // seek for - argument (read from stdin)
         foreach(i, arg; args)
         {
@@ -161,7 +103,12 @@ int main(string[] args)
         if (nappopt.isNull)
             return 1;
 
-        appOptions = nappopt.get();
+        with (nappopt.get())
+        {
+            options.files = files;
+            options.importPaths = importPaths;
+            readStdin = stdin;
+        }
     }
 
     initCompilerContext();
@@ -175,7 +122,7 @@ int main(string[] args)
         log(entry);
         try {
             processSourceFile(entry.name);
-        } catch (AssertError e) {
+        } catch (FatalError e) {
             reinitCompilerContext();
         }
     }
