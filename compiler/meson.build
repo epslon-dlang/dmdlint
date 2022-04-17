@@ -183,3 +183,22 @@ dmd_dep = declare_dependency(
   # d_import_dirs: dmd_d_import_dirs,
   # d_module_versions: dmd_d_module_versions,
 )
+
+# Install Phobos & D Runtime
+
+sources_loc = get_option('datadir') / 'dmdlint' / 'sources'
+
+install_subdir('phobos/etc', install_dir: sources_loc)
+install_subdir('phobos/std', install_dir: sources_loc)
+
+install_subdir('druntime/src/core', install_dir: sources_loc)
+install_subdir('druntime/src/etc', install_dir: sources_loc)
+install_subdir('druntime/src/rt', install_dir: sources_loc)
+install_data([
+    'druntime/src/__builtins.di',
+    'druntime/src/importc.h',
+    'druntime/src/object.d',
+    'druntime/src/test_runner.d',
+  ],
+  install_dir: sources_loc
+)
