@@ -6,12 +6,13 @@ import dmdlint.common.diag;
 import dmdlint.scanner.compiler;
 import dmdlint.scanner.diag;
 
-import std.file;
 import std.algorithm;
-import std.stdio;
-import std.getopt;
 import std.array;
+import std.file;
 import std.functional;
+import std.getopt;
+import std.path;
+import std.stdio;
 
 import std.experimental.logger;
 
@@ -85,16 +86,21 @@ int main(string[] args)
         auto nopt = buf[].unpackBuffer!(ScanOptions, SignatureChecks.none);
         assert(!nopt.isNull, "can't decode packed buffer");
         options = nopt.get();
+
+        diagnosticContext.reportEvents = true;
     } else {
         assert(args.length > 0);
 
+        // TODO: Tweak this
+        diagnosticContext.console = true;
+        diagnosticContext.consoleColors = true;
+
         // seek for - argument (read from stdin)
-        foreach(i, arg; args)
+        foreach(ref arg; args)
         {
             if(arg == "-")
             {
-                readStdin = true;
-                args = args.remove(i);
+                arg = "--stdin";
                 break;
             }
         }
@@ -109,16 +115,29 @@ int main(string[] args)
             options.importPaths = importPaths;
             readStdin = stdin;
         }
+
+        if (!readStdin && options.files.empty)
+        {
+            stderr.writeln("Please specify file!\n");
+            parseCLIArgs!AppOptions(["-h"]);
+            return 1;
+        }
     }
+
 
     initCompilerContext();
     scope(exit) deinitializeDMD();
 
     foreach (path; options.files)
     {
+        if (!path.isValidPath)
+        {
+            stderr.writefln("Invalid path: '%s'", path);
+            return 1;
+        }
         if (!path.exists)
         {
-            stderr.writefln("Invalid path '%s'", path);
+            stderr.writefln("Path doesn't exist: '%s'", path);
             return 1;
         }
 

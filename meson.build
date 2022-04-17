@@ -28,8 +28,9 @@ dmdlint_linter_src = [
 
 dmdlint_scanner_src = [
   'source/dmdlint/scanner/app.d',
-  'source/dmdlint/scanner/diag.d',
   'source/dmdlint/scanner/compiler.d',
+  'source/dmdlint/scanner/diag.d',
+  'source/dmdlint/scanner/utils.d',
 ]
 
 executable('dmdlint-scan',

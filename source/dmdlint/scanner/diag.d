@@ -1,14 +1,18 @@
 module dmdlint.scanner.diag;
 
 import dmdlint.common.diag;
+import dmdlint.common.utils;
 
 import dmd.errors;
 import dmd.console;
 import dmd.globals;
 
 import core.stdc.stdarg;
+import core.stdc.stdio;
 
 import std.array;
+import std.stdio;
+import std.algorithm;
 
 Severity toSeverity(Color color) nothrow @nogc @safe pure
 {
@@ -34,14 +38,22 @@ Severity toSeverity(Color color) nothrow @nogc @safe pure
     }
 }
 
+Color toColor(Severity severity) nothrow @nogc @safe pure
+{
+    final switch(severity) with(Severity)
+    {
+        case error:       return Color.red;
+        case warning:     return Color.yellow;
+        case deprecation: return Color.cyan;
+        case gagged:      return Color.blue;
+        case hint:        return Color.green;
+        case message:     return Color.white;
+    }
+}
+
 Location toLocation(Loc loc) nothrow @nogc pure
 {
-    import core.stdc.string : strlen;
-    string filename = (loc.filename)
-        ? cast(string) loc.filename[0..strlen(loc.filename)]
-        : null;
-
-    return Location(filename, loc.linnum, loc.charnum);
+    return Location(loc.filename.toDString(), loc.linnum, loc.charnum);
 }
 
 /**
@@ -51,10 +63,16 @@ struct DiagnosticContext
 {
     /**
      * Wether to use console to output diagnostic events. If false, `events` is
-     * expected to be appended when an event triggers the diagnostic handler.
+     * still expected to be appended when an event triggers the diagnostic
+     * handler, unless `reportEvents` is set to `false`.
      */
     bool console;
-    /// List of diagnostic events
+    /// Wether to enable console colors.
+    bool consoleColors;
+
+    /// Wether to report the events to the `events` appender.
+    bool reportEvents;
+    /// List of diagnostic events.
     Appender!(Diagnostic[]) events;
 }
 
@@ -64,6 +82,8 @@ struct DiagnosticContext
  * Note: there is no need to be on TLS since the compiler is single-threaded.
  */
 __gshared DiagnosticContext diagnosticContext;
+
+private __gshared Console consoleInterface;
 
 /**
  * Diagnostic handler used by the compiler frontend to handle diagnostic events
@@ -82,6 +102,11 @@ bool diagnosticHandler(
     Severity severity = headerColor.toSeverity();
     Location location = loc.toLocation();
 
+    bool supplemental = true;
+    foreach(c; header.toDString())
+        if (c != ' ')
+            supplemental = false;
+
     string message = void;
     {
         // Avoid copy/reallocating a new buffer for performance reasons.
@@ -96,20 +121,76 @@ bool diagnosticHandler(
         GC.addRange(message.ptr, message.length);
     }
 
-    diagnosticContext.events ~= Diagnostic(location, severity, message);
-
+    diagnosticWriter(Diagnostic(location, severity, message, supplemental));
     return true;
+}
+
+void diagnosticWriter(in Diagnostic diagnostic) nothrow
+{
+    with (diagnosticContext)
+    {
+        if (console)
+            diagnosticPrinter(diagnostic);
+
+        if (reportEvents)
+            events ~= diagnostic;
+    }
+}
+
+void diagnosticPrinter(in Diagnostic diagnostic) nothrow
+{
+    with(diagnostic)
+    {
+        if (consoleInterface is null)
+            consoleInterface = createConsole(core.stdc.stdio.stderr);
+
+        alias stderr = std.stdio.stderr;
+
+        try {
+            if (location != Location.init)
+            {
+                consoleInterface.setColor(Color.white);
+                if (location.filename)
+                {
+                    stderr.write(location.filename);
+                    if (location.line)
+                    {
+                        stderr.writef("(%d", location.line);
+                        if (location.col)
+                            stderr.writef(":%d", location.col);
+                        stderr.writef("): ");
+
+                    }
+                }
+            }
+
+            if (!supplemental) // normal error
+            {
+                consoleInterface.setColor(severity.toColor);
+                consoleInterface.setColorBright(true);
+                stderr.writef("%s: ", severity.toString);
+                consoleInterface.resetColor();
+            } else {
+                consoleInterface.resetColor();
+                stderr.write("       ");
+            }
+            stderr.writeln(message);
+        } catch (Exception ex)
+        {
+            assert(0, ex.msg);
+        }
+    }
 }
 
 class FatalError : Error
 {
-    @safe pure nothrow this(string file, size_t line)
+    @safe pure nothrow @nogc this(string file, size_t line)
     {
         super("fatal error", file, line, cast(Throwable)null);
     }
 }
 
-bool fatalErrorHandler() nothrow
+bool fatalErrorHandler() nothrow @nogc
 {
     // globally shared storage for fatal errors (garanteed to use one thread)
     __gshared align(2 * size_t.sizeof)

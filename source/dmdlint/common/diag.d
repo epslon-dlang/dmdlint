@@ -23,12 +23,26 @@ enum Severity
     gagged,      /// gagged errors
 }
 
+string toString(Severity severity) @nogc nothrow @safe pure
+{
+    final switch(severity) with(Severity)
+    {
+        case message:     return "Message";
+        case hint:        return "Hint";
+        case warning:     return "Warning";
+        case deprecation: return "Deprecation";
+        case error:       return "Error";
+        case gagged:      return "Gagged";
+    }
+}
+
 /**
  * Diagnostic structure that represents each error reported by the linter
  */
 struct Diagnostic
 {
-    Location loc;      /// location in the source code
+    Location location; /// location in the source code
     Severity severity; /// diagnostic severity
     string message;    /// description of the diagnosed problem
+    bool supplemental; /// wether its a supplemental diagnostic
 }

@@ -7,6 +7,14 @@ import std.traits;
 import std.typecons;
 import std.meta;
 
+string toDString(const(char*) cstr) @nogc pure nothrow
+{
+    import core.stdc.string : strlen;
+    return (cstr)
+        ? cast(string) cstr[0..strlen(cstr)]
+        : null;
+}
+
 void writeLEB128(T, R)(ref R range, T value)
     if(is(ForeachType!R == ubyte) && isIntegral!T)
 {
