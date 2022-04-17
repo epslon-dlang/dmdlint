@@ -5,6 +5,7 @@ import dmdlint.common.utils;
 import dmdlint.common.diag;
 import dmdlint.scanner.compiler;
 import dmdlint.scanner.diag;
+import dmdlint.scanner.utils;
 
 import std.algorithm;
 import std.array;
@@ -124,9 +125,12 @@ int main(string[] args)
         }
     }
 
+    compilerContext.importPaths ~= getDefaultImportPaths();
+    foreach(path; options.importPaths)
+        compilerContext.importPaths ~= path;
 
-    initCompilerContext();
-    scope(exit) deinitializeDMD();
+    compilerContext.initialize();
+    scope(exit) compilerContext.deinitialize();
 
     foreach (path; options.files)
     {
@@ -149,7 +153,7 @@ int main(string[] args)
                 try {
                     processSourceFile(entry.name);
                 } catch (FatalError e) {
-                    reinitCompilerContext();
+                    compilerContext.reinitialize();
                 }
             }
         } else {
@@ -157,7 +161,7 @@ int main(string[] args)
             try {
                 processSourceFile(path);
             } catch (FatalError e) {
-                reinitCompilerContext();
+                compilerContext.reinitialize();
             }
         }
     }
