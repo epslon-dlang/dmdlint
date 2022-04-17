@@ -10,6 +10,7 @@ import std.algorithm;
 import std.stdio;
 import std.getopt;
 import std.array;
+import std.functional;
 
 import std.experimental.logger;
 
@@ -37,7 +38,7 @@ __gshared Appender!(Diagnostic[]) diagnostics;
 void initCompilerContext()
 {
     // handlers
-    static immutable DiagnosticHandler diagnosticHandler = (
+    static bool diagnosticHandlerFunc(
         const ref Loc loc,
         Color headerColor,
         const(char)* header,
@@ -66,7 +67,7 @@ void initCompilerContext()
         diagnostics ~= Diagnostic(location, severity, message);
 
         return true;
-    };
+    }
 
     static immutable FatalErrorHandler errorHandler = () {
         onAssertErrorMsg(__FILE__, __LINE__, "fatal error");
@@ -77,7 +78,7 @@ void initCompilerContext()
     global.params.errorLimit = 0;
 
     // init global state
-    initDMD(diagnosticHandler, errorHandler);
+    initDMD(toDelegate(&diagnosticHandlerFunc), errorHandler);
 }
 
 void reinitCompilerContext()
