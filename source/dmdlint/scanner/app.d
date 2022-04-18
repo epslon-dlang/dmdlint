@@ -6,6 +6,7 @@ import dmdlint.common.diag;
 import dmdlint.scanner.compiler;
 import dmdlint.scanner.diag;
 import dmdlint.scanner.utils;
+import dmdlint.scanner.rules.unused;
 
 import std.algorithm;
 import std.array;
@@ -32,7 +33,12 @@ void processSourceFile(string path)
 {
     auto parseResult = parseModule(path);
     if (parseResult.module_)
+    {
         parseResult.module_.fullSemantic();
+
+        // rules
+        parseResult.module_.reportUnusedRule();
+    }
 }
 
 struct AppOptions

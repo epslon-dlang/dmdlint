@@ -4,6 +4,7 @@ dcompiler = meson.get_compiler('d')
 
 # External dependencies
 argparse_dep = dependency('argparse', method: 'dub')
+emsi_containers_dep = dependency('emsi_containers', method: 'dub')
 
 subdir('compiler')
 
@@ -31,6 +32,7 @@ dmdlint_scanner_src = [
   'source/dmdlint/scanner/compiler.d',
   'source/dmdlint/scanner/diag.d',
   'source/dmdlint/scanner/utils.d',
+  'source/dmdlint/scanner/rules/unused.d',
 ]
 
 executable('dmdlint-scan',
@@ -38,7 +40,11 @@ executable('dmdlint-scan',
   include_directories: dmdlint_incdir,
   d_import_dirs: dmd_d_import_dirs,
   d_module_versions: dmd_d_module_versions,
-  dependencies: [dmd_dep, argparse_dep],
+  dependencies: [
+    dmd_dep,
+    argparse_dep,
+    emsi_containers_dep,
+  ],
   link_with: [dmdlint_common_lib],
   install: true
 )
