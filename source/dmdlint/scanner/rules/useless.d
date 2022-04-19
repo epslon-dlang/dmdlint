@@ -19,15 +19,15 @@ import std.experimental.logger;
 
 import containers.slist;
 
-void reportUnusedRule(Module module_)
+void reportUselessRule(Module module_)
 {
-    auto v = new UnusedRuleVisitor(module_);
+    auto v = new UselessRuleVisitor(module_);
     module_.accept(v);
 
     v.reportUnusedImports();
 }
 
-private void reportUnusedImports(UnusedRuleVisitor v)
+private void reportUnusedImports(UselessRuleVisitor v)
 {
     auto isyms = v.importedModules.values
         .chunkBy!"a.sym == b.sym"
@@ -89,7 +89,7 @@ private struct PublicModuleIterator
     }
 }
 
-extern(C++) final class UnusedRuleVisitor : Visitor
+extern(C++) final class UselessRuleVisitor : Visitor
 {
     import dmd.dtemplate : TemplateInstance;
 

@@ -6,7 +6,7 @@ import dmdlint.common.diag;
 import dmdlint.scanner.compiler;
 import dmdlint.scanner.diag;
 import dmdlint.scanner.utils;
-import dmdlint.scanner.rules.unused;
+import dmdlint.scanner.rules.useless;
 
 import std.algorithm;
 import std.array;
@@ -37,7 +37,7 @@ void processSourceFile(string path)
         parseResult.module_.fullSemantic();
 
         // rules
-        parseResult.module_.reportUnusedRule();
+        parseResult.module_.reportUselessRule();
     }
 }
 

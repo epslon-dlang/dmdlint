@@ -34,7 +34,7 @@ dmdlint_scanner_src = [
   'source/dmdlint/scanner/compiler.d',
   'source/dmdlint/scanner/diag.d',
   'source/dmdlint/scanner/utils.d',
-  'source/dmdlint/scanner/rules/unused.d',
+  'source/dmdlint/scanner/rules/useless.d',
 ]
 
 executable('dmdlint-scan',
