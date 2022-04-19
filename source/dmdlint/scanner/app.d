@@ -156,7 +156,6 @@ int main(string[] args)
         {
             foreach(entry; dirEntries(path, "*.{d,di,dd}", SpanMode.depth).filter!(e => e.isFile))
             {
-                log(entry);
                 try {
                     processSourceFile(entry.name);
                 } catch (FatalError e) {
@@ -164,7 +163,6 @@ int main(string[] args)
                 }
             }
         } else {
-            log(path);
             try {
                 processSourceFile(path);
             } catch (FatalError e) {
