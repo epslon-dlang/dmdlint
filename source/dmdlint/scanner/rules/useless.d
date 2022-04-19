@@ -11,9 +11,11 @@ import dmd.dsymbol;
 import dmd.statement;
 import dmd.common.outbuffer;
 import dmd.id;
+import dmd.globals;
 
 import std.typecons;
 import std.algorithm;
+import std.array;
 import std.format;
 import std.experimental.logger;
 
@@ -25,6 +27,7 @@ void reportUselessRule(Module module_)
     module_.accept(v);
 
     v.reportUnusedImports();
+    v.reportUselessImports();
 }
 
 private void reportUnusedImports(UselessRuleVisitor v)
@@ -50,6 +53,56 @@ private void reportUnusedImports(UselessRuleVisitor v)
     }
 }
 
+void reportUselessImports(UselessRuleVisitor v)
+{
+    auto isyms = v.imports[]
+        .sort!"cast(ptrdiff_t)cast(void*)a.mod < cast(ptrdiff_t)cast(void*)b.mod";
+
+    if (isyms.empty)
+        return;
+
+    // temporary buffers
+    OutBuffer buf;
+
+    Import lastImport = isyms.front;
+    lastImport.mod.fullyQualifiedName(buf);
+    isyms.popFront;
+
+    import core.stdc.stdlib : free;
+    char[] last = buf.extractSlice();
+    scope(exit) free(last.ptr);
+
+    foreach(i; isyms)
+    {
+        buf.reset();
+        i.mod.fullyQualifiedName(buf);
+
+        if (last == buf[])
+        {
+            if (lastImport.id == Id.object)
+            {
+                Import obj = (i.mod.loc == Loc.initial) ? lastImport : i;
+                diagnosticWriter(Diagnostic(
+                        obj.loc.toLocation,
+                        Severity.hint,
+                        format!"The module '%s' is already imported by default"(last)
+                    ));
+            } else {
+                diagnosticWriter(Diagnostic(
+                        i.mod.loc.toLocation,
+                        Severity.hint,
+                        format!"Duplicate imported module '%s'"(last)
+                    ));
+            }
+        }
+
+        free(last.ptr);
+        last = buf.extractSlice();
+        lastImport = i;
+    }
+
+}
+
 private struct PublicModuleIterator
 {
     Module module_;
@@ -70,6 +123,9 @@ private struct PublicModuleIterator
             if (m in visited)
                 continue;
 
+            int res = dg(m);
+            if (res) return res;
+
             visited[m] = true;
 
             if (auto isc = m.getImportedScopes())
@@ -80,9 +136,6 @@ private struct PublicModuleIterator
                         if (auto im = sym.isModule())
                             stack.insert(im);
             }
-
-            int res = dg(m);
-            if (res) return res;
         } while(!stack.empty);
 
         return 0;
@@ -96,6 +149,7 @@ extern(C++) final class UselessRuleVisitor : Visitor
     alias visit = Visitor.visit;
 
     Tuple!(Import, "sym", bool, "used")[Module] importedModules;
+    Appender!(Import[]) imports;
     Module rootModule;
 
     this(Module rootModule) {
@@ -127,12 +181,14 @@ extern(C++) final class UselessRuleVisitor : Visitor
 
     override void visit(Import i)
     {
-        // ignore non-private import
-        if (i.visibility.kind != Visibility.Kind.private_)
-            return;
+        imports ~= i;
 
         // ignore special object module import
         if (i.id == Id.object)
+            return;
+
+        // ignore non-private import
+        if (i.visibility.kind != Visibility.Kind.private_)
             return;
 
         // add root module and any publicly imported module
