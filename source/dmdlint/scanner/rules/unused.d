@@ -17,6 +17,8 @@ import std.algorithm;
 import std.format;
 import std.experimental.logger;
 
+import containers.slist;
+
 void reportUnusedRule(Module module_)
 {
     auto v = new UnusedRuleVisitor(module_);
@@ -28,8 +30,12 @@ void reportUnusedRule(Module module_)
 private void reportUnusedImports(UnusedRuleVisitor v)
 {
     auto isyms = v.importedModules.values
-        .filter!(im => !im.used)
-        .map!(im => im.sym);
+        .chunkBy!"a.sym == b.sym"
+        .map!(g => g.map!"tuple(a[0], cast(size_t)a[1])")
+        .map!(g => tuple(g.front[0], g.map!"a[1]".sum))
+        .filter!"a[1] == 0"
+        .map!"a[0]";
+
     foreach(i; isyms)
     {
         OutBuffer buf;
@@ -44,32 +50,49 @@ private void reportUnusedImports(UnusedRuleVisitor v)
     }
 }
 
-/*
-TODO: Compiler need to export public modules
 private struct PublicModuleIterator
 {
-    this(Module module_)
-    {
-        stack.insert(module_);
-    }
+    Module module_;
 
+    // Perform a simple depth-first search on the imported scopes
     int opApply(int delegate(ref Module) dg)
     {
-        int res;
+        SList!Module stack;
+        bool[Module] visited;
 
-        while(!stack.empty)
+        stack.insert(module_);
+
+        do
         {
+            auto m = stack.front();
+            stack.popFront();
 
-        }
+            if (m in visited)
+                continue;
+
+            visited[m] = true;
+
+            if (auto isc = m.getImportedScopes())
+            {
+                auto visibilities = m.getImportVisibilities();
+                foreach(i, sym; *isc)
+                    if (visibilities[i] == Visibility.Kind.public_)
+                        if (auto im = sym.isModule())
+                            stack.insert(im);
+            }
+
+            int res = dg(m);
+            if (res) return res;
+        } while(!stack.empty);
+
+        return 0;
     }
-
-    Module cur;
-    SList!Module stack;
 }
-*/
 
 extern(C++) final class UnusedRuleVisitor : Visitor
 {
+    import dmd.dtemplate : TemplateInstance;
+
     alias visit = Visitor.visit;
 
     Tuple!(Import, "sym", bool, "used")[Module] importedModules;
@@ -86,28 +109,18 @@ extern(C++) final class UnusedRuleVisitor : Visitor
                 sym.accept(this);
     }
 
-    private Module getImportModule(Module mod)
+    override void visit(TemplateInstance ti)
     {
-        if (!mod
-            || mod.importedFrom is null
-            || mod.importedFrom is rootModule
-            || mod.importedFrom is mod)
-            return mod;
+        // skip template instances from other modules
+        if (ti.minst != rootModule || ti.tinst)
+            return;
 
-        return getImportModule(mod.importedFrom);
+        this.visit(cast(Dsymbol)ti);
     }
 
     override void visit(Dsymbol sym)
     {
-        // ignore import symbols
-        if(sym.isImport())
-            return;
-
-        // ignore non-scope symbols that are not imported
-        if (!sym.isImportedSymbol() && !sym.isScopeDsymbol())
-            return;
-
-        if (auto mod = sym.getAccessModule())
+        if (auto mod = sym.getModule())
             if(auto tup = getImportModule(mod) in importedModules)
                 tup.used = true;
     }
@@ -122,12 +135,19 @@ extern(C++) final class UnusedRuleVisitor : Visitor
         if (i.id == Id.object)
             return;
 
-        // add root module
-        if (i.mod)
-            importedModules[i.mod] = tuple(i, false);
+        // add root module and any publicly imported module
+        foreach(mod; PublicModuleIterator(i.mod))
+            importedModules[mod] = tuple(i, false);
+    }
 
-        // add any publicly imported module
-        /* foreach(mod; PublicModuleIterator(i.mod)) */
-        /*     importedModules[mod] = tuple(i, false); */
+    private Module getImportModule(Module mod)
+    {
+        if (!mod
+            || mod.importedFrom is null
+            || mod.importedFrom is rootModule
+            || mod.importedFrom is mod)
+            return mod;
+
+        return getImportModule(mod.importedFrom);
     }
 }
