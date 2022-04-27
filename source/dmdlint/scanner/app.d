@@ -20,7 +20,6 @@ import std.experimental.logger;
 
 import core.exception;
 import core.stdc.stdarg;
-import core.sys.posix.unistd : isatty, STDIN_FILENO;
 
 import dmd.frontend;
 import dmd.errors;
@@ -72,9 +71,37 @@ int main(string[] args)
     ScanOptions options;
     bool readStdin;
 
+    static bool detectTerminal() nothrow
+    {
+        version (Posix)
+        {
+            import core.sys.posix.unistd : isatty, STDIN_FILENO;
+            import core.stdc.stdlib : getenv;
+            import core.stdc.string : strcmp;
+
+            const(char)* term = getenv("TERM");
+            return isatty(STDIN_FILENO) && term && term[0] && strcmp(term, "dumb") != 0;
+        }
+        else version (Windows)
+        {
+            import core.sys.windows.winbase;
+            import core.sys.windows.wincon;
+            import core.sys.windows.windef;
+            import core.stdc.stdio : stdin;
+
+            version (CRuntime_DigitalMars)
+                return isatty(stdin._file) != 0;
+            else version (CRuntime_Microsoft)
+                return isatty(fileno(stdin)) != 0;
+            else
+                static assert(0, "Unsupported Windows runtime.");
+        }
+
+    }
+
+
     // check if stdin is open and it's not in a tty
-    // FIXME: Make it less OS-dependent by using UCRT library
-    if (args.length == 1 && stdin.isOpen() && !isatty(STDIN_FILENO))
+    if (args.length == 1 && stdin.isOpen() && !detectTerminal())
     {
         static immutable minPackedBufChunkSize = genPackedBuffer(ScanOptions.init).length;
         static immutable minChunkSize = min(minPackedBufChunkSize, 4096);
