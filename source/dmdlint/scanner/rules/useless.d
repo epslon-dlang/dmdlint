@@ -1,4 +1,4 @@
-module dmdlint.scanner.rules.unused;
+module dmdlint.scanner.rules.useless;
 
 import dmdlint.common.utils;
 import dmdlint.common.diag;
