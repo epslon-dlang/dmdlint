@@ -113,11 +113,11 @@ int main(string[] args)
             }
         }
 
-        auto nappopt = parseCLIArgs!AppOptions(args[1 .. $]);
-        if (nappopt.isNull)
+        AppOptions appopt;
+        if (!CLI!AppOptions.parseArgs(appopt, args[1 .. $]))
             return 1;
 
-        with (nappopt.get())
+        with (appopt)
         {
             options.files = files;
             options.importPaths = importPaths;
@@ -127,7 +127,8 @@ int main(string[] args)
         if (!readStdin && options.files.empty)
         {
             stderr.writeln("Please specify file!\n");
-            parseCLIArgs!AppOptions(["-h"]);
+            AppOptions _;
+            CLI!AppOptions.parseArgs(_, ["-h"]);
             return 1;
         }
     }
