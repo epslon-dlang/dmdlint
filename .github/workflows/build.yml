@@ -1,0 +1,121 @@
+---
+name: build
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: dmd-latest
+
+      - name: Cache dub dependencies
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.dub/
+            ./.dub/
+          key: linux-dub-${{ hashFiles('dub.selections.json') }}
+          restore-keys: |
+            linux-dub-
+
+      - name: Build documentation
+        run: |
+          dub run adrdox@2.5.2 -- -j1 source
+          dub build --build=ddox
+          dub build --build=docs
+
+          dub build :common --build=ddox
+          dub build :common --build=docs
+
+          # FIXME: https://github.com/dlang-community/containers/pull/190
+          # dub build :scanner --build=ddox
+          # dub build :scanner --build=docs
+
+  dub:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        dc: [ dmd-latest ] # dmd-latest, ldc-latest, ldc-master
+        arch: [x86_64] # x86
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.dc }}
+
+      - name: '[POSIX] Cache dub dependencies'
+        if: runner.os != 'Windows'
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.dub
+            ./.dub
+          key: ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-${{ hashFiles('dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-
+
+      - name: '[Windows] Cache dub dependencies'
+        if: runner.os == 'Windows'
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~\AppData\Local\dub
+            .\.dub
+          key: ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-${{ hashFiles('dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-
+
+      - name: Check for syntax before build
+        run: |
+          dub build --arch=${{ matrix.arch }} --build=syntax
+          dub build :common --arch=${{ matrix.arch }} --build=syntax
+          dub build :scanner --arch=${{ matrix.arch }} --build=syntax
+
+      - name: Build
+        run: |
+          dub build --build=debug --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build --build=release --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build --build=release-debug --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build --build=release-nobounds --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+
+          dub build :common --build=debug --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build :common --build=release --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build :common --build=release-debug --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build :common --build=release-nobounds --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+
+          dub build :scanner --build=debug --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build :scanner --build=release --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build :scanner --build=release-debug --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+          dub build :scanner --build=release-nobounds --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v
+
+      - name: Run mono-threaded test suite
+        run: |
+          dub test --build=unittest-cov --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v -- --DRT-covopt="merge:1"
+          dub test :common --build=unittest-cov --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v -- --DRT-covopt="merge:1"
+          dub test :scanner --build=unittest-cov --arch=${{ matrix.arch }} --parallel --build-mode=singleFile --force -v -- --DRT-covopt="merge:1"
+
+      - name: Upload code coverage to codecov
+        uses: codecov/codecov-action@v2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: unittests
+          verbose: true
