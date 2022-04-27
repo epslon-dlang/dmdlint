@@ -1,7 +1,7 @@
 {
   "fileVersion": 1,
   "versions": {
-    "argparse": "0.8.0",
+    "argparse": "0.9.0",
     "dmd": {
       "path": "compiler/dmd/"
     },
