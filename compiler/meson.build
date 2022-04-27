@@ -168,6 +168,14 @@ dmd_d_module_versions = [
   'CallbackAPI',
 ]
 
+# FIXME: make this more portable
+env = environment()
+find_program('bash')
+run_command('bash', '-c', 'python -c \'print("' + get_option('dmd_sysconfdir').replace('"', '\"') + '")\' > SYSCONFDIR.imp',
+  env: env,
+  check: true
+)
+
 dmd_lib = static_library('dmd',
   dmd_src,
   include_directories: dmd_incdir,

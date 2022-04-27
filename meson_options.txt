@@ -1,0 +1,1 @@
+option('dmd_sysconfdir', type : 'string', value : '/etc')

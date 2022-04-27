@@ -25,3 +25,6 @@ docs/
 
 # Binary folder
 bin/
+
+# Compiler
+compiler/SYSCONFDIR.imp
