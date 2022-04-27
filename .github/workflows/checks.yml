@@ -1,0 +1,31 @@
+name: checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  before-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Configure Git
+      run: |
+        git config --global color.diff.meta       "11"
+        git config --global color.diff.frag       "magenta bold"
+        git config --global color.diff.func       "146 bold"
+        git config --global color.diff.commit     "yellow bold"
+        git config --global color.diff.old        "red bold"
+        git config --global color.diff.new        "green bold"
+        git config --global color.diff.whitespace "red reverse"
+
+        git config --global diff.wsErrorHighlight "all"
+    - uses: actions/setup-python@v3.1.2
+    - uses: before-commit/run-action@v2.0.3
+      env:
+        SKIP: no-commit-to-branch
