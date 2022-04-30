@@ -5,8 +5,6 @@ dcompiler = meson.get_compiler('d')
 # External dependencies
 argparse_dep = dependency('argparse', method: 'dub')
 emsi_containers_dep = dependency('emsi_containers', method: 'dub')
-# FIXME: Meson should pick this
-stdx_allocator_dep = dependency('stdx-allocator', method: 'dub')
 
 subdir('compiler')
 
@@ -46,7 +44,6 @@ executable('dmdlint-scan',
     dmd_dep,
     argparse_dep,
     emsi_containers_dep,
-    stdx_allocator_dep,
   ],
   link_with: [dmdlint_common_lib],
   install: true
