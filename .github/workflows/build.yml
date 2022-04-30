@@ -45,6 +45,73 @@ jobs:
           # dub build :scanner --build=ddox
           # dub build :scanner --build=docs
 
+  meson:
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+        dc: [ dmd-latest, ldc-latest ]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Install D compiler
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.dc }}
+
+      - name: '[POSIX] Cache dub dependencies'
+        if: runner.os != 'Windows'
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.dub
+            ./.dub
+          key: ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-${{ hashFiles('dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-
+
+      - name: '[Windows] Cache dub dependencies'
+        if: runner.os == 'Windows'
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~\AppData\Local\dub
+            .\.dub
+          key: ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-${{ hashFiles('dub.selections.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.dc }}-${{ matrix.arch }}-dub-
+
+      - uses: actions/setup-python@v3.1.2
+      - name: Install mesonbuild
+        run: |
+          pip install meson
+      - name: Setup Ninja
+        uses: ashutoshvarma/setup-ninja@v1.1
+
+      - name: Prepare build
+        run: |
+          dub fetch argparse && dub build argparse --compiler="$DC"
+          dub fetch emsi_containers && dub build emsi_containers --compiler="$DC"
+        shell: bash
+
+      - name: '[POSIX] Prepare build'
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p "$HOME/.local"
+          meson builddir . --prefix="$HOME/.local"
+
+      - name: '[Windows] Prepare build'
+        if: runner.os == 'Windows'
+        run: meson builddir .
+
+      - name: Build
+        run: ninja -C builddir
+
+      - name: Install
+        run: ninja -C builddir install
+
   dub:
     strategy:
       matrix:
