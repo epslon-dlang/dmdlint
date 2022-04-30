@@ -48,9 +48,9 @@ jobs:
   dub:
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest, macOS-latest ]
-        dc: [ dmd-latest ] # dmd-latest, ldc-latest, ldc-master
-        arch: [x86_64] # x86
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        dc: [dmd-latest, ldc-latest]
+        arch: [x86_64]
 
     runs-on: ${{ matrix.os }}
     steps:
