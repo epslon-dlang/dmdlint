@@ -13,6 +13,7 @@ dmdlint_incdir = include_directories('source')
 
 dmdlint_common_src = [
   'source/dmdlint/common/diag.d',
+  'source/dmdlint/common/rules.d',
   'source/dmdlint/common/scanopt.d',
   'source/dmdlint/common/utils.d',
 ]

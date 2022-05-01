@@ -1,6 +1,7 @@
 module dmdlint.scanner.diag;
 
 import dmdlint.common.diag;
+import dmdlint.common.rules;
 import dmdlint.common.utils;
 
 import dmd.errors;
@@ -121,7 +122,9 @@ bool diagnosticHandler(
         GC.addRange(message.ptr, message.length);
     }
 
-    diagnosticWriter(Diagnostic(location, severity, message, supplemental));
+    diagnosticWriter(
+        Diagnostic(location, severity, Rule.compiler, message, supplemental)
+    );
     return true;
 }
 
@@ -147,9 +150,9 @@ void diagnosticPrinter(in Diagnostic diagnostic) nothrow
         alias stderr = std.stdio.stderr;
 
         try {
+            consoleInterface.setColor(Color.white);
             if (location != Location.init)
             {
-                consoleInterface.setColor(Color.white);
                 if (location.filename)
                 {
                     stderr.write(location.filename);
@@ -158,11 +161,11 @@ void diagnosticPrinter(in Diagnostic diagnostic) nothrow
                         stderr.writef("(%d", location.line);
                         if (location.col)
                             stderr.writef(":%d", location.col);
-                        stderr.writef("): ");
-
+                        stderr.write(")");
                     }
                 }
             }
+            stderr.writef("[%s]: ", toString(diagnostic.rule));
 
             if (!supplemental) // normal error
             {

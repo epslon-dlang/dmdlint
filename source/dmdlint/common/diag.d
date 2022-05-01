@@ -1,5 +1,7 @@
 module dmdlint.common.diag;
 
+import dmdlint.common.rules;
+
 /**
  * Location structure that represents a location within source code
  */
@@ -43,6 +45,7 @@ struct Diagnostic
 {
     Location location; /// location in the source code
     Severity severity; /// diagnostic severity
+    Rule rule;         /// diagnostic rule id
     string message;    /// description of the diagnosed problem
     bool supplemental; /// wether its a supplemental diagnostic
 }
