@@ -192,9 +192,21 @@ class FatalError : Error
 
 bool fatalErrorHandler() nothrow @nogc
 {
+    template maxAlignment(Ts...)
+    if (Ts.length > 0)
+    {
+        enum maxAlignment =
+        {
+            size_t result = 0;
+            static foreach (T; Ts)
+                if (T.alignof > result) result = T.alignof;
+            return result;
+        }();
+    }
+
     // globally shared storage for fatal errors (garanteed to use one thread)
-    __gshared align(2 * size_t.sizeof)
-        void[__traits(classInstanceSize, FatalError)] fatalErrorStore;
+    __gshared align(maxAlignment!(void*, FatalError.tupleof))
+        void[__traits(classInstanceSize, FatalError)] fatalErrorStore = void;
 
     static FatalError get()
     {
