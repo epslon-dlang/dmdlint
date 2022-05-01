@@ -32,13 +32,22 @@ import argparse;
 
 void processSourceFile(string path)
 {
-    auto parseResult = parseModule(path);
-    if (parseResult.module_)
-    {
-        parseResult.module_.fullSemantic();
+    info("Analyzing '", path, "' ...");
+    try {
+        trace("Parsing module");
+        auto parseResult = parseModule(path);
+        if (parseResult.module_)
+        {
+            // TODO: Split logging into individual semantic phases
+            trace("Running full semantics");
+            parseResult.module_.fullSemantic();
 
-        // rules
-        parseResult.module_.reportUselessRule();
+            // rules
+            parseResult.module_.reportUselessRule();
+        }
+    } catch (FatalError e) {
+        trace("FatalError was thrown");
+        compilerContext.reinitialize();
     }
 }
 
@@ -55,6 +64,12 @@ struct AppOptions
         .Description("Specify a list of rules to exclude")
     )
     string[] excludeRules;
+
+    @(
+        NamedArgument("logging")
+        .Description("Specify a logging level")
+    )
+    LogLevel logging = LogLevel.off;
 
     @MutuallyExclusive
     {
@@ -168,6 +183,8 @@ int main(string[] args)
             return 1;
         }
 
+        sharedLog.logLevel = appopt.logging;
+
         with (appopt)
         {
             options.files = files;
@@ -208,22 +225,10 @@ int main(string[] args)
         }
 
         if (DirEntry(path).isDir)
-        {
             foreach(entry; dirEntries(path, "*.{d,di,dd}", SpanMode.depth).filter!(e => e.isFile))
-            {
-                try {
-                    processSourceFile(entry.name);
-                } catch (FatalError e) {
-                    compilerContext.reinitialize();
-                }
-            }
-        } else {
-            try {
-                processSourceFile(path);
-            } catch (FatalError e) {
-                compilerContext.reinitialize();
-            }
-        }
+                processSourceFile(entry.name);
+        else
+            processSourceFile(path);
     }
 
     return 0;
