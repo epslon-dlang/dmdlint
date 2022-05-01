@@ -62,6 +62,8 @@ Location toLocation(Loc loc) nothrow @nogc pure
  */
 struct DiagnosticContext
 {
+    /// List of rules to exclude
+    Rule[] excludeRules;
     /**
      * Wether to use console to output diagnostic events. If false, `events` is
      * still expected to be appended when an event triggers the diagnostic
@@ -130,6 +132,10 @@ bool diagnosticHandler(
 
 void diagnosticWriter(in Diagnostic diagnostic) nothrow
 {
+    foreach(r; diagnosticContext.excludeRules)
+        if (diagnostic.rule == r)
+            return;
+
     with (diagnosticContext)
     {
         if (console)
