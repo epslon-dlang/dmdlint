@@ -48,7 +48,7 @@ void writeLEB128(T, R)(ref R range, T value)
 
 Nullable!T readLEB128(T, R)(ref R range)
 {
-    T result = 0;
+    OriginalType!T result = 0;
     size_t shift;
     ubyte b = void;
 
@@ -67,7 +67,7 @@ Nullable!T readLEB128(T, R)(ref R range)
         if ((shift < T.sizeof) && (b & 0x40))
             result |= (~0 << shift);
 
-        return nullable!T(result);
+        return nullable!T(cast(T)result);
     } else {
         while (true) {
             if(range.empty)
@@ -77,7 +77,7 @@ Nullable!T readLEB128(T, R)(ref R range)
 
             result |= (b & 0x7F) << shift;
             if ((b & 0x80) == 0)
-                return nullable!T(result);
+                return nullable!T(cast(T)result);
             shift += 7;
         }
     }
