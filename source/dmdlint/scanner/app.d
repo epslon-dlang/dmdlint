@@ -1,15 +1,17 @@
 module dmdlint.scanner.app;
 
+import dmdlint.common.diag;
+import dmdlint.common.rules;
 import dmdlint.common.scanopt;
 import dmdlint.common.utils;
-import dmdlint.common.diag;
 import dmdlint.scanner.compiler;
 import dmdlint.scanner.diag;
-import dmdlint.scanner.utils;
 import dmdlint.scanner.rules.useless;
+import dmdlint.scanner.utils;
 
 import std.algorithm;
 import std.array;
+import std.conv;
 import std.file;
 import std.functional;
 import std.getopt;
@@ -48,6 +50,12 @@ struct AppOptions
     )
     string[] importPaths;
 
+    @(
+        NamedArgument("exclude", "e")
+        .Description("Specify a list of rules to exclude")
+    )
+    string[] excludeRules;
+
     @MutuallyExclusive
     {
         @(
@@ -63,6 +71,12 @@ struct AppOptions
         string[] files;
     }
 }
+
+enum appConfig = {
+    Config cfg;
+    cfg.arraySep = ',';
+    return cfg;
+}();
 
 version(unittest) {}
 else
@@ -141,13 +155,24 @@ int main(string[] args)
         }
 
         AppOptions appopt;
-        if (!CLI!AppOptions.parseArgs(appopt, args[1 .. $]))
+        if (!CLI!(appConfig, AppOptions).parseArgs(appopt, args[1 .. $]))
             return 1;
+
+        Rule[] convertedExcludeRules;
+        try {
+            convertedExcludeRules= appopt.excludeRules.map!(to!Rule)
+                .array;
+        } catch (ConvException ex)
+        {
+            stderr.writeln("Malformed list of exclude rules.");
+            return 1;
+        }
 
         with (appopt)
         {
             options.files = files;
             options.importPaths = importPaths;
+            options.excludeRules = convertedExcludeRules;
             readStdin = stdin;
         }
 
@@ -155,10 +180,12 @@ int main(string[] args)
         {
             stderr.writeln("Please specify file!\n");
             AppOptions _;
-            CLI!AppOptions.parseArgs(_, ["-h"]);
+            CLI!(appConfig, AppOptions).parseArgs(_, ["-h"]);
             return 1;
         }
     }
+
+    diagnosticContext.excludeRules = options.excludeRules;
 
     compilerContext.importPaths ~= getDefaultImportPaths();
     foreach(path; options.importPaths)

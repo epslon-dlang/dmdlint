@@ -3,6 +3,7 @@ module dmdlint.common.scanopt;
 import std.array;
 import std.traits;
 
+import dmdlint.common.rules;
 import dmdlint.common.utils;
 
 struct ScanOptions {
@@ -14,4 +15,7 @@ struct ScanOptions {
 
     /// Provided string import paths (-J option in the compiler)
     string[] stringImportPaths;
+
+    /// Excluded rules to diagnose
+    Rule[] excludeRules;
 }
