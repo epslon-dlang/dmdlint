@@ -1,7 +1,8 @@
 module dmdlint.scanner.rules.useless;
 
-import dmdlint.common.utils;
 import dmdlint.common.diag;
+import dmdlint.common.rules;
+import dmdlint.common.utils;
 import dmdlint.scanner.diag;
 
 import dmd.visitor;
@@ -48,6 +49,7 @@ private void reportUnusedImports(UselessRuleVisitor v)
         diagnosticWriter(Diagnostic(
                 i.mod.loc.toLocation,
                 Severity.hint,
+                Rule.h1,
                 format!"Unused imported module '%s'"(name)
             ));
     }
@@ -85,12 +87,14 @@ void reportUselessImports(UselessRuleVisitor v)
                 diagnosticWriter(Diagnostic(
                         obj.loc.toLocation,
                         Severity.hint,
+                        Rule.h2,
                         format!"The module '%s' is already imported by default"(last)
                     ));
             } else {
                 diagnosticWriter(Diagnostic(
                         i.mod.loc.toLocation,
                         Severity.hint,
+                        Rule.h3,
                         format!"Duplicate imported module '%s'"(last)
                     ));
             }
