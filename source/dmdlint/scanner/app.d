@@ -60,6 +60,24 @@ struct AppOptions
     string[] importPaths;
 
     @(
+        NamedArgument("strimports", "J")
+        .Description("Specify additional string import paths")
+    )
+    string[] stringImportPaths;
+
+    @(
+        NamedArgument("version")
+        .Description("Specify version condition flags")
+    )
+    string[] versionConditions;
+
+    @(
+        NamedArgument("debug")
+        .Description("Specify debug condition flags")
+    )
+    string[] debugConditions;
+
+    @(
         NamedArgument("exclude", "e")
         .Description("Specify a list of rules to exclude")
     )
@@ -189,6 +207,9 @@ int main(string[] args)
         {
             options.files = files;
             options.importPaths = importPaths;
+            options.stringImportPaths = stringImportPaths;
+            options.versionConditions = versionConditions;
+            options.debugConditions = debugConditions;
             options.excludeRules = convertedExcludeRules;
             readStdin = stdin;
         }
@@ -204,9 +225,16 @@ int main(string[] args)
 
     diagnosticContext.excludeRules = options.excludeRules;
 
-    compilerContext.importPaths ~= getDefaultImportPaths();
-    foreach(path; options.importPaths)
-        compilerContext.importPaths ~= path;
+    with (compilerContext)
+    {
+        importPaths.reserve(options.importPaths.length + 1);
+        importPaths = importPaths.ptr[0 .. options.importPaths.length + 1];
+        importPaths[0] = getDefaultImportPaths();
+        importPaths[1 .. $] = options.importPaths;
+        stringImportPaths = options.stringImportPaths;
+        versionConditions = options.versionConditions;
+        debugConditions = options.debugConditions;
+    }
 
     compilerContext.initialize();
     scope(exit) compilerContext.deinitialize();
