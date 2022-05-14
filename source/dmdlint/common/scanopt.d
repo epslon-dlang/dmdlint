@@ -13,6 +13,12 @@ struct ScanOptions {
     /// Provided import paths (-I option in the compiler)
     string[] importPaths;
 
+    /// Provided version conditions (-version option in the compiler)
+    string[] versionConditions;
+
+    /// Provided debug conditions (-debug option in the compiler)
+    string[] debugConditions;
+
     /// Provided string import paths (-J option in the compiler)
     string[] stringImportPaths;
 

@@ -5,6 +5,7 @@ import dmdlint.scanner.utils;
 
 import dmd.frontend;
 import dmd.globals;
+import dmd.cond;
 
 import std.functional;
 import std.path;
@@ -23,6 +24,12 @@ struct CompilerContext
 
         foreach(path; stringImportPaths)
             addStringImport(path);
+
+        foreach(ver; versionConditions)
+            VersionCondition.addGlobalIdent(ver);
+
+        foreach(dbg; debugConditions)
+            DebugCondition.addGlobalIdent(dbg);
 
         // init global state
         initDMD(
@@ -44,8 +51,10 @@ struct CompilerContext
         initialize();
     }
 
-    Appender!(string[]) importPaths;
-    Appender!(string[]) stringImportPaths;
+    string[] importPaths;
+    string[] stringImportPaths;
+    string[] versionConditions;
+    string[] debugConditions;
 }
 
 __gshared CompilerContext compilerContext;
